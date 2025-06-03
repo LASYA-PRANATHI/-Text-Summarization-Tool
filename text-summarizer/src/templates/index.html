@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Summarizer - AI-Powered Summary Generator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="gradient-bg">
+        <div class="particles"></div>
+        <div class="app-container">
+            <button class="theme-toggle" onclick="toggleTheme()">
+                <i class="fas fa-moon"></i>
+            </button>
+            <header class="app-header">
+                <h1>Text Summarizer</h1>
+                <p class="subtitle">AI-Powered Text Summarization Tool</p>
+            </header>
+
+            <main class="main-content">
+                <div class="input-section">
+                    <div class="section-header">
+                        <h2><i class="fas fa-pen"></i> Enter Your Text</h2>
+                        <p>Paste or type your text here</p>
+                    </div>
+                    <textarea id="input-text" placeholder="Paste or type text here..."></textarea>
+                    <div class="controls">
+                        <div class="sentence-count">
+                            <label for="sentence-count">Summary Length:</label>
+                            <input type="number" id="sentence-count" min="1" max="10" value="3">
+                        </div>
+                        <button onclick="generateSummary()" class="primary-btn">
+                            <i class="fas fa-magic"></i> <span>Generate Summary</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="output-section">
+                    <div class="section-header">
+                        <h2><i class="fas fa-clipboard"></i> Summary Output</h2>
+                        <p>Edit and download your summary</p>
+                    </div>
+                    <div class="summary-container">
+                        <textarea id="summary-output" placeholder="Your summary will appear here..." class="editable-summary"></textarea>
+                    </div>
+                    <div class="action-buttons">
+                        <button onclick="downloadSummary()" class="secondary-btn">
+                            <i class="fas fa-download"></i> Download Summary
+                        </button>
+                        <button onclick="clearOutput()" class="tertiary-btn">
+                            <i class="fas fa-trash"></i> Clear Output
+                        </button>
+                    </div>
+                </div>
+            </main>
+
+            <footer class="app-footer">
+                <p>Powered by AI &copy; 2025</p>
+            </footer>
+        </div>
+    </div>
+    <script>
+        function toggleTheme() {
+            document.body.setAttribute('data-theme', document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+            document.querySelector('.theme-toggle i').classList.toggle('fa-moon');
+            document.querySelector('.theme-toggle i').classList.toggle('fa-sun');
+        }
+
+        async function generateSummary() {
+            const text = document.getElementById('input-text').value;
+            const sentenceCount = document.getElementById('sentence-count').value;
+            const generateBtn = document.querySelector('.primary-btn');
+            const loadingIcon = generateBtn.querySelector('i');
+            const textIcon = generateBtn.querySelector('span');
+            
+            try {
+                generateBtn.disabled = true;
+                loadingIcon.style.display = 'inline-block';
+                textIcon.style.display = 'none';
+                
+                const response = await fetch('/summarize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        num_sentences: sentenceCount
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                document.getElementById('summary-output').value = data.summary;
+            } catch (error) {
+                alert('Error generating summary: ' + error.message);
+            } finally {
+                generateBtn.disabled = false;
+                loadingIcon.style.display = 'none';
+                textIcon.style.display = 'inline-block';
+            }
+        }
+
+        async function downloadSummary() {
+            try {
+                const summary = document.getElementById('summary-output').value;
+                if (!summary) {
+                    alert('No summary to download');
+                    return;
+                }
+                
+                const response = await fetch('/download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ summary: summary })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.text();
+                    throw new Error(error);
+                }
+                
+                // Create a temporary link to trigger the download
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'summary.txt';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+            } catch (error) {
+                alert('Error downloading summary: ' + error.message);
+            }
+        }
+        
+
+        function clearOutput() {
+            document.getElementById('summary-output').value = '';
+        }
+    </script>
+</body>
+</html>
